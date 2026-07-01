@@ -119,6 +119,12 @@ fastify.delete('/reservations/:id', async (request, reply) => {
       return { message: 'Reservation already inactive', status: reservation.status };
     }
 
+    // Lock the product row so counter updates cannot interleave with concurrent creates.
+    await client.query(
+      'SELECT id FROM products WHERE id = $1 FOR UPDATE',
+      [reservation.product_id]
+    );
+
     await client.query(
       "UPDATE reservations SET status = 'RELEASED', updated_at = now() WHERE id = $1",
       [id]
@@ -177,6 +183,10 @@ async function expireOldReservations() {
     );
 
     for (const reservation of expired.rows) {
+      await client.query(
+        'SELECT id FROM products WHERE id = $1 FOR UPDATE',
+        [reservation.product_id]
+      );
       await client.query(
         "UPDATE reservations SET status = 'EXPIRED', updated_at = now() WHERE id = $1",
         [reservation.id]

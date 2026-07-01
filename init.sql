@@ -1,9 +1,10 @@
 CREATE TABLE products (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  total_quantity INTEGER NOT NULL,
-  reserved_quantity INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
+  reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (reserved_quantity <= total_quantity)
 );
 
 CREATE TABLE reservations (
