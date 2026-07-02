@@ -33,8 +33,8 @@ Push to GitHub — final submission step
 ## Prompt 2 — spec check
 
 ```text
-jivanex backend intern task
-[full assignment spec pasted]
+ task
+[spec pasted]
 
 this project is supposed to do these. is it doing these? if not let it do these
 ```
@@ -46,7 +46,7 @@ this project is supposed to do these. is it doing these? if not let it do these
 ## Prompt 3 — github
 
 ```text
-do it.  https://github.com/sripriyakota2305  this is my github
+do it. sripriyakota2305  this is my github
 ```
 
 **What happened:** remote + commits set up. push failed (repo didnt exist). i created repo on github and pushed manually.
@@ -61,15 +61,3 @@ i added, https://github.com/sripriyakota2305/inventory-reservation-service , che
 
 **What happened:** confirmed local main matches github.
 
----
-
-## Prompt 5 — ai-prompts folder
-
-```text
-AI Tool Usage Submission Guide
-[full guide pasted]
-
-im supposed to be doing this too. I only used cursor and claude.
-```
-
-**What happened:** ai-prompts/ folder created. im filling in the actual prompt details myself.

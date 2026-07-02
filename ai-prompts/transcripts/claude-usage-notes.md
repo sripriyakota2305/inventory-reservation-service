@@ -17,7 +17,17 @@ Prompts below match what i asked in that chat (see link for exact wording). Word
 
 ## topics i asked claude about (in order)
 
-### 1 — tables + seed data
+### 1 — explain assignment + tech stack first
+
+```text
+explain what i have to do first for this jivanex task and explain the tech stack too (node fastify postgres kafka docker compose)
+```
+
+→ got clear breakdown of requirements and what each part of stack is doing.
+
+---
+
+### 2 — tables + seed data
 
 ```text
 ok so i have this jivanex backend intern task. inventory reservation service — fastify, postgres, kafka, docker compose
@@ -31,7 +41,7 @@ also whats seed data they want product-1 with 10 units do i just INSERT that som
 
 ---
 
-### 2 — race conditions / FOR UPDATE
+### 3 — race conditions / FOR UPDATE
 
 ```text
 big thing they care about is race conditions — 10 stock, 20 people reserve at once, only 10 should work
@@ -43,7 +53,7 @@ im doing BEGIN/COMMIT transactions but is that enough?? people keep saying FOR U
 
 ---
 
-### 3 — kafka
+### 4 — kafka
 
 ```text
 need kafka for reservation.created / released / expired events
@@ -55,7 +65,7 @@ never used kafka before. do i need consumers or just publish?? docker compose fo
 
 ---
 
-### 4 — ttl expiry
+### 5 — ttl expiry
 
 ```text
 reservations expire after 15 min and should stop blocking inventory
@@ -67,7 +77,7 @@ how do i do expiry in node?? setInterval?? cron??
 
 ---
 
-### 5 — concurrency test
+### 6 — concurrency test
 
 ```text
 they want a concurrency test — 20 requests at once, only 10 should succeed

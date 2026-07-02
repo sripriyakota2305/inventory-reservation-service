@@ -7,7 +7,7 @@ A small REST API that reserves product inventory under concurrent load without o
 **Prerequisites:** Node.js 18+, Docker
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/sripriyakota2305/inventory-reservation-service
 cd inventory-reservation-service
 npm install
 cp .env.example .env
@@ -15,9 +15,9 @@ docker compose up -d
 npm start
 ```
 
-`docker compose up -d` starts PostgreSQL and Kafka. On first run, PostgreSQL automatically applies `init.sql` (schema + seed data).
+   This starts PostgreSQL on port `5432` and Kafka on port `9092`.
 
-The API listens on `http://localhost:3000`.
+3. **Initialize the database**
 
 To reset the database from scratch:
 
