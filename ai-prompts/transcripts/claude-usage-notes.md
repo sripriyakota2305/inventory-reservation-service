@@ -1,6 +1,6 @@
 # Claude Chat
 
-**Shared conversation (full transcript):** https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb
+**Shared conversation (full transcript):
 
 This is where i built most of the project — before i switched to Cursor for readme/git/submission stuff.
 
