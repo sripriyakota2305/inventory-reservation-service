@@ -1,60 +1,63 @@
 # Claude Chat Summary
 
-**Tool:** Claude (web chat)  
-**Note:** No local transcript export — this is a summary from memory of the main conversations.
+**Link:** https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb
+
+couldn't export transcript locally so this is a summary. the shared link above has the actual conversation.
 
 ---
 
-## Conversation 1 — "Why isn't a transaction enough?"
+## 1 — tables and seed data
 
-**What I asked:**
+**me:** got jivanex assignment, need fastify postgres kafka. they gave products/reservations tables but idk if thats enough. also what is seed data do i just insert in sql
 
-I understood I needed Postgres transactions for the reservation API, but I didn't get why that alone prevents overselling when 20 people hit the endpoint at once.
+**claude:** two tables fine. seed = INSERT product-1 with 10 qty in init.sql. suggested reserved_quantity column on products
 
-**What I learned:**
-
-Two transactions can both read the same `reserved_quantity` before either writes. `SELECT ... FOR UPDATE` makes the second request wait on the product row.
-
-**What I did after:**
-
-Implemented create reservation with product row lock + counter increment. Re-read the [Postgres locking docs](https://www.postgresql.org/docs/current/explicit-locking.html) to make sure I wasn't misunderstanding.
+**me after:** wrote init.sql, added seed row, started on server.js
 
 ---
 
-## Conversation 2 — "Kafka for the first time"
+## 2 — race conditions / FOR UPDATE
 
-**What I asked:**
+**me:** they care about race conditions, 20 people 10 stock only 10 should work. im using transactions is that enough?? whats FOR UPDATE
 
-Never used Kafka before. Needed a minimal docker setup and a way to publish an event when a reservation is created. Do I need consumers?
+**claude:** transaction alone not enough, both can read same stock. FOR UPDATE locks the row. do everything in one transaction
 
-**What I learned:**
-
-For this assignment, a producer publishing after commit is enough. Consumers are for downstream processing. Publish-after-commit is a tradeoff — if Kafka is down, DB and events can disagree.
-
-**What I did after:**
-
-Built `kafka.js` and wired three topics. Got docker-compose working after some trial and error on Windows.
+**me after:** added FOR UPDATE on create reservation. still confused but it made sense after reading postgres docs
 
 ---
 
-## Conversation 3 — "How do I test concurrency?"
+## 3 — kafka
 
-**What I asked:**
+**me:** need kafka events created/released/expired. never used kafka. consumers needed?? docker compose confusing
 
-Wanted to fire 20 parallel requests against 10 stock. Is `Promise.all` okay?
+**claude:** publish only is ok for assignment. docker kafka config + kafkajs producer. publish after commit
 
-**What I learned:**
-
-Yes, for a quick local test it works — doesn't await sequentially so requests actually overlap.
-
-**What I did after:**
-
-Wrote `concurrency-test.js` with my own pass/fail checks. Ran it every time I changed locking logic.
+**me after:** kafka.js + docker-compose, fought with it till it ran on windows
 
 ---
 
-## What I didn't ask Claude to do
+## 4 — ttl expiry
 
-- I did **not** paste the full assignment and say "build everything"
-- I used it more like "explain this concept" / "review this approach" while I wrote the code
-- The release/expire locking gap I figured out later (with Cursor's help) — I hadn't thought to ask about that initially
+**me:** reservations expire after 15 min and should free inventory. how do i do this in node
+
+**claude:** setInterval job, find expired ACTIVE ones, mark EXPIRED, decrement counter
+
+**me after:** added expireOldReservations in server.js every 30 sec
+
+---
+
+## 5 — concurrency test
+
+**me:** need 20 concurrent requests only 10 succeed. promise.all??
+
+**claude:** yeah that works for quick test
+
+**me after:** concurrency-test.js, ran it a bunch while debugging
+
+---
+
+## what i didnt do
+
+- didnt paste whole assignment and say build everything
+- asked when stuck on specific things (tables, kafka, locking, testing)
+- release/expire lock bug i found later with cursor not claude

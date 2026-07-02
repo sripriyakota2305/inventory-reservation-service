@@ -2,20 +2,20 @@
 
 ## Tools Used
 
-- **Claude:** Yes — web chat, mostly to understand concepts I was stuck on (locking, transactions, Kafka basics)
-- **Codex:** No
-- **Codex CLI:** No
-- **Cursor:** Yes — Agent mode, mostly for reviewing my code, README help, and catching a bug I missed
-- **GitHub Copilot:** No
-- **Other:** None
+- **Claude:** yes — claude.ai web chat, mostly when i was stuck on postgres/kafka/schema stuff ([shared chat](https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb))
+- **Codex:** no
+- **Codex CLI:** no
+- **Cursor:** yes — agent mode for readme, gitignore, checking if i missed anything in the assignment
+- **GitHub Copilot:** no
+- **Other:** none
 
 ## How I verified the final solution
 
-1. Ran `docker compose up -d` myself and fixed a couple of port/config issues on Windows.
-2. Tested endpoints manually with `curl` (create, get, release, availability).
-3. Wrote and ran `concurrency-test.js` — reset the DB, ran `npm test`, got **10 succeeded / 10 failed / 0 available**.
-4. Re-read the release and expire code after Cursor pointed out I might be missing a lock — made sure I understood *why* before keeping the fix.
-5. Double-checked `.gitignore` so `.env` wasn't committed.
+- ran `docker compose up -d` till postgres + kafka actually started (took a bit on windows)
+- curl'd the endpoints manually
+- ran `npm test` after resetting db — got 10 success 10 fail 0 stock left
+- read the release/expire code again after cursor said i might be missing a lock
+- made sure .env wasn't in git
 
 ---
 
@@ -23,225 +23,318 @@
 
 ### Prompt 1
 
-**Tool:** Claude (web chat)  
-**Date:** Early in the project
+**Tool:** Claude  
+**Date:** start of project
 
 **Prompt:**
 
 ```text
-I'm doing a backend take-home where I need to reserve inventory in Postgres without overselling if lots of people hit the API at once.
+ok so i got this backend intern assignment (jivanex). i need to build an inventory reservation api with fastify postgres kafka docker compose
 
-I know I need transactions but I'm confused — is a normal BEGIN/COMMIT enough, or do I actually need row locking? What's FOR UPDATE and when would you use it here?
+they gave me like a basic table structure for products and reservations but idk if thats enough?? do i need more tables or is that fine
+
+also what even is seed data they want product-1 with 10 quantity do i just put that in a sql file
 ```
 
 **Useful output summary:**
 
-Claude explained that a transaction alone doesn't stop two requests from both reading "10 available" at the same time. `SELECT ... FOR UPDATE` locks the product row so the second request waits until the first finishes.
-
-It also suggested keeping a `reserved_quantity` counter on `products` instead of counting reservation rows every time.
+claude said two tables is fine for this scope. products needs total_quantity, reservations links to product with status and expires_at. seed data = just INSERT in init.sql so reviewers can test fast.
 
 **What I accepted:**
 
-- The idea of locking the product row on create
-- Using `total_quantity - reserved_quantity` for availability
-- Doing the check + update inside one transaction
+- products + reservations schema
+- seed row for product-1 with 10 units in init.sql
 
 **What I changed manually:**
 
-- Wrote most of `server.js` myself using that pattern, referring back to the Postgres docs
-- Chose `RELEASED` / `EXPIRED` status names and the 30-second expiry poll interval on my own
+- added reserved_quantity column on products cos i needed somewhere to track whats held (claude suggested this when i asked how to check available stock without counting every row)
 
 **Why:**
 
-I wanted to actually understand locking, not just paste code. The explanation is what helped — I still had to wire up the routes and SQL.
+i genuinely didnt know what "seed data" meant before this
 
 ---
 
 ### Prompt 2
 
-**Tool:** Claude (web chat)  
-**Date:** Mid-project
+**Tool:** Claude  
+**Date:** early project
 
 **Prompt:**
 
 ```text
-How do I set up Kafka in docker-compose for a small local project? I just need to publish events when a reservation is created — not sure if I need consumers for this assignment.
+the main thing they care about is race conditions?? like if 10 items in stock and 20 people try to reserve at the same time only 10 should work
 
-Also is it okay to publish after the DB commit, or does that cause problems?
+im using transactions but is that enough or do i need something else. keep seeing FOR UPDATE online and i dont get what it does
 ```
 
 **Useful output summary:**
 
-Claude gave a minimal `docker-compose` Kafka service and a small `kafkajs` producer example. Said publish-after-commit is fine for a take-home, but mentioned an "outbox pattern" for production (which I didn't implement).
+explained that two requests can both read "10 available" before either writes. FOR UPDATE locks the row so they go one at a time. do check + update in same transaction.
 
 **What I accepted:**
 
-- Basic Kafka producer setup in `kafka.js`
-- Publishing `reservation.created` / `released` / `expired` after commit
-- Logging publish errors instead of failing the HTTP request
+- SELECT ... FOR UPDATE on product row when creating reservation
+- BEGIN/COMMIT around the whole thing
 
 **What I changed manually:**
 
-- Spent time getting Kafka to actually start on my machine (tweaked env vars)
-- Decided not to add consumers — felt out of scope for me right now
+- typed out the fastify route myself, had to look up pg pool syntax
+- picked 409 for not enough stock
 
 **Why:**
 
-I mainly needed help with Kafka config — I'd never used it before this project.
+this was the whole point of the assignment i needed to actually get it
 
 ---
 
 ### Prompt 3
 
-**Tool:** Claude (web chat)  
-**Date:** Mid-project
+**Tool:** Claude  
+**Date:** mid project
 
 **Prompt:**
 
 ```text
-I want to test concurrent reservations. Product has 10 stock, I want to fire like 20 requests at the same time and see that only 10 work.
+they want kafka for events reservation.created released expired
 
-Is Promise.all the right way to do that in Node, or is there a better approach?
+never used kafka before lol. do i need consumers or is publishing enough?? and how do i even run kafka locally docker compose is confusing me
 ```
 
 **Useful output summary:**
 
-Claude said `Promise.all` with `fetch` is a reasonable quick test — fires them without awaiting one by one.
+for a take home publishing is enough. gave docker-compose kafka service + kafkajs producer snippet. said publish after db commit is ok for now.
 
 **What I accepted:**
 
-- General structure of `concurrency-test.js`
+- kafka in docker-compose
+- basic producer in kafka.js
+- 3 event topics
 
 **What I changed manually:**
 
-- Wrote the pass/fail check myself (10 successes, 0 remaining stock)
-- Added console output so I could see what failed and why (409 vs 201)
+- fought with kafka env vars till it actually started
+- decided not to do consumers cos i was already behind on time
 
 **Why:**
 
-I wanted something I could run repeatedly while iterating on the locking logic.
+kafka was completely new to me
 
 ---
 
 ### Prompt 4
 
-**Tool:** Cursor Agent  
-**Date:** 2026-07-01
+**Tool:** Claude  
+**Date:** mid project
 
 **Prompt:**
 
 ```text
-I'm almost done with this project. Can you help me write a .gitignore for a Node project? I almost committed node_modules and my .env file has my DB password in it.
+reservations need to expire after 15 min default and stop blocking inventory
 
-Also my README is pretty bare — what sections should a take-home README usually have?
+how do people usually do this?? background job?? cron?? im on node fastify
 ```
 
 **Useful output summary:**
 
-Cursor suggested ignoring `node_modules/`, `.env`, and common OS files. Helped draft a README with setup steps, API examples, and a design section.
+setInterval polling is fine for small project. find ACTIVE reservations where expires_at < now(), mark EXPIRED, give the quantity back.
 
 **What I accepted:**
 
-- `.gitignore` and `.env.example` (template without real secrets)
-- README outline
+- setInterval every 30 sec for expiry job
+- EXPIRED status + decrement reserved_quantity
 
 **What I changed manually:**
 
-- Rewrote parts of the README in my own words after reading through it
-- Removed a duplicate `docker-compose.yml` file I accidentally created in PowerShell
+- wired it into server.js
+- made ttl configurable from env DEFAULT_TTL_MINUTES
 
 **Why:**
 
-I'd never set up a proper `.gitignore` for a Node backend before.
+seemed simplest thing that would work
 
 ---
 
 ### Prompt 5
 
-**Tool:** Cursor Agent  
-**Date:** 2026-07-01
+**Tool:** Claude  
+**Date:** mid project
 
 **Prompt:**
 
 ```text
-Can you review my release and expire logic? Create reservation uses FOR UPDATE on the product row but I'm not sure I did the same thing correctly when releasing or when the TTL job runs.
+assignment wants a test where 20 concurrent requests happen and only 10 succeed
 
-I feel like something could go wrong if a release and a new reservation happen at the same time.
+how do i actually fire requests at the same time in node?? promise.all??
 ```
 
 **Useful output summary:**
 
-Cursor said I was right to be suspicious — release/expire were updating `reserved_quantity` without locking the product row, so a concurrent create could interleave badly. Suggested adding `FOR UPDATE` on the product in those paths too.
-
-Also noticed my README was missing a few sections the assignment asked for, and that I didn't have `npm start` / `npm test` scripts.
+yeah promise.all with fetch works, dont await in a loop or theyll go one by one
 
 **What I accepted:**
 
-- Product-row lock on release and expire (after reading the explanation)
-- `npm start` and `npm test` in `package.json`
-- Mounting `init.sql` in docker-compose so DB init is automatic
+- basic structure for concurrency-test.js
 
 **What I changed manually:**
 
-- Ran `npm test` myself after the fix to confirm it still passes
-- Read through the locking section in README until I could explain it without looking
+- added the pass/fail check at the end (10 success, 0 available)
+- ran it like 10 times while fixing bugs
 
 **Why:**
 
-This was the most useful Cursor prompt — it caught something I genuinely didn't think through.
+needed proof my locking actually works
 
 ---
 
 ### Prompt 6
 
-**Tool:** Cursor Agent  
+**Tool:** Cursor  
 **Date:** 2026-07-01
 
 **Prompt:**
 
 ```text
-The assignment also wants an ai-prompts folder documenting how I used AI. I used Claude and Cursor. Can you help me set up the folder structure? I'll fill in the honest details.
+can u help with gitignore for node project i almost committed node_modules 💀
+
+also readme is basically empty what am i supposed to put for this kind of assignment
 ```
 
 **Useful output summary:**
 
-Created `ai-prompts/prompts.md` and transcript files based on our sessions.
+gitignore for node_modules .env etc. readme with setup steps api examples design section. also deleted a random duplicate docker-compose file i made by accident in powershell
 
 **What I accepted:**
 
-- Folder structure from the submission guide
+- .gitignore .env.example
+- first draft readme
 
 **What I changed manually:**
 
-- Rewrote prompts to reflect what I actually asked / learned (this file)
-- Redacted anything sensitive
+- read through readme and tweaked wording
+- did first git commit myself
 
 **Why:**
 
-Required for submission — wanted it to be accurate, not just copy-pasted.
+didnt want to leak db password or upload 500mb of node_modules
 
 ---
 
-## What I rejected or didn't use from AI
+### Prompt 7
 
-| Suggestion | My decision |
+**Tool:** Cursor  
+**Date:** 2026-07-01
+
+**Prompt:**
+
+```text
+wait does my project actually do everything they asked for
+
+[pasted jivanex assignment spec]
+
+like the readme sections and the concurrency thing and kafka and expiry and all that. if something's missing fix it
+```
+
+**Useful output summary:**
+
+most of it was there already. found a bug — release and expire werent locking product row when updating reserved_quantity. added that. added npm start npm test scripts. auto init sql in docker. fixed readme sections.
+
+**What I accepted:**
+
+- product lock fix on release/expire (makes sense once explained)
+- npm scripts
+- init.sql mounted in docker-compose
+
+**What I changed manually:**
+
+- ran npm test after to make sure still passes
+- tried to understand WHY the lock was needed not just copy paste
+
+**Why:**
+
+didnt wanna submit something broken
+
+---
+
+### Prompt 8
+
+**Tool:** Cursor  
+**Date:** 2026-07-01
+
+**Prompt:**
+
+```text
+push to git heres my github sripriyakota2305
+```
+
+**Useful output summary:**
+
+set up remote, committed stuff. push failed cos repo didnt exist yet. i made the repo on github and pushed myself.
+
+**What I accepted:**
+
+- remote url setup
+
+**What I changed manually:**
+
+- created repo on github
+- git push -u origin main
+
+**Why:**
+
+just needed it on github for submission
+
+---
+
+### Prompt 9
+
+**Tool:** Cursor  
+**Date:** 2026-07-01
+
+**Prompt:**
+
+```text
+they also want ai-prompts folder with prompts and transcripts documenting ai usage. i used claude and cursor only. can u set it up
+```
+
+**Useful output summary:**
+
+made ai-prompts folder structure. im filling in the actual prompts myself.
+
+**What I accepted:**
+
+- folder layout from submission guide
+
+**What I changed manually:**
+
+- writing prompts in my own words (this file)
+- claude link: https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb
+
+**Why:**
+
+required for submission
+
+---
+
+## stuff i didnt do / ignored from ai
+
+| thing | why |
 |---|---|
-| Kafka consumers | Too much for me right now; publishing events was enough |
-| Transactional outbox | Sounded important but I didn't have time to learn + implement it |
-| In-memory locking (mutex) | Assignment said Postgres — felt like cheating |
-| Full Jest/Vitest suite | Stuck with my concurrency script; wanted to finish the core logic first |
-| Auth on endpoints | Not required, would've been scope creep |
+| kafka consumers | too much, publishing was enough |
+| transactional outbox | sounded complicated didnt have time |
+| in memory mutex | assignment said postgres |
+| full jest test suite | just used my concurrency script |
+| auth on api | not asked for |
 
----
+## me vs ai (roughly)
 
-## What I actually did vs. what AI helped with
-
-| Part | Me | AI helped with |
+| thing | me | ai helped |
 |---|---|---|
-| Understanding `FOR UPDATE` | Read docs, traced through transactions | Claude explained the race condition |
-| `server.js` routes + SQL | Wrote/adapted most of it | Snippets and patterns when stuck |
-| `kafka.js` + docker-compose | Got it running locally after trial and error | Initial Kafka/docker config |
-| `concurrency-test.js` | Wrote pass criteria and ran it a lot | Promise.all pattern |
-| Release/expire locking bug | Suspected something was off | Cursor confirmed + showed the fix |
-| README + gitignore | Edited and reviewed everything | First draft / structure |
-| GitHub push | Created repo and pushed myself | Commit messages, remote setup |
+| figuring out tables + seed | asked a lot of dumb questions | claude explained schema |
+| locking / race conditions | implemented after understanding | claude explained FOR UPDATE |
+| kafka + docker | got it running after trial and error | claude gave starting config |
+| expiry job | wired it up | claude said setInterval is ok |
+| concurrency test | wrote pass/fail checks | claude said use promise.all |
+| release lock bug | didnt catch at first | cursor found it when reviewing |
+| readme gitignore git | reviewed everything | cursor drafted |
+| github push | did the actual push | cursor set remote |
