@@ -1,8 +1,5 @@
-{"role":"user","message":{"content":[{"type":"text","text":"can u help with gitignore for node project i almost committed node_modules 💀\n\nalso readme is basically empty what am i supposed to put for this kind of assignment"}]}}
-{"role":"assistant","message":{"content":[{"type":"text","text":"made .gitignore, .env.example, draft readme. removed duplicate docker-compose file"}]}}
-{"role":"user","message":{"content":[{"type":"text","text":"wait does my project actually do everything they asked for\n\n[pasted jivanex assignment spec]\n\nlike readme sections concurrency kafka expiry all that. if somethings missing fix it"}]}}
-{"role":"assistant","message":{"content":[{"type":"text","text":"mostly there. release/expire missing product row lock — fixed. added npm start/test, docker init.sql auto mount, readme sections. npm test passed 10/10/0"}]}}
-{"role":"user","message":{"content":[{"type":"text","text":"push to git heres my github sripriyakota2305"}]}}
-{"role":"assistant","message":{"content":[{"type":"text","text":"set remote, committed. push failed repo didnt exist. user created repo and pushed manually"}]}}
-{"role":"user","message":{"content":[{"type":"text","text":"they want ai-prompts folder for documenting ai usage. used claude and cursor. can u set it up"}]}}
-{"role":"assistant","message":{"content":[{"type":"text","text":"created ai-prompts folder. user filling in prompts themselves"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\nWhat's left (all lighter lift from here):\n\n.gitignore — quick, so you don't accidentally commit node_modules (huge, unnecessary) or .env (has your DB password)\nREADME.md — setup instructions, API examples, design explanation, the required \"what I didn't implement\" section\nPush to GitHub — final submission step\n</user_query>"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\njivanex backend intern task\n[assignment spec — omitted here for length, see prompts.md Prompt 7]\n\nthis project is supposed to do these. is it doing these? if not let it do these\n</user_query>"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\ndo it.  https://github.com/sripriyakota2305  this is my github\n</user_query>"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\ni added, https://github.com/sripriyakota2305/inventory-reservation-service , check\n</user_query>"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\nAI Tool Usage Submission Guide\n[submission guide — omitted for length]\n\nim supposed to be doing this too. I only used cursor and claude.\n</user_query>"}]}}

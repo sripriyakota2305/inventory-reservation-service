@@ -2,192 +2,201 @@
 
 ## Tools Used
 
-- **Claude:** yes — claude.ai web chat, mostly when i was stuck on postgres/kafka/schema stuff ([shared chat](https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb))
+- **Claude:** yes — [shared chat](https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb) (web). used while building the core service — schema, locking, kafka, expiry, concurrency test
 - **Codex:** no
 - **Codex CLI:** no
-- **Cursor:** yes — agent mode for readme, gitignore, checking if i missed anything in the assignment
+- **Cursor:** yes — agent mode, mostly after the core code was working (readme, gitignore, spec check, github, ai-prompts folder)
 - **GitHub Copilot:** no
 - **Other:** none
 
 ## How I verified the final solution
 
-- ran `docker compose up -d` till postgres + kafka actually started (took a bit on windows)
-- curl'd the endpoints manually
-- ran `npm test` after resetting db — got 10 success 10 fail 0 stock left
-- read the release/expire code again after cursor said i might be missing a lock
-- made sure .env wasn't in git
+- `docker compose up -d` — got postgres + kafka running on windows (took some tweaking)
+- manual `curl` on all endpoints
+- `npm test` after resetting db → 10 succeeded, 10 failed, 0 available
+- re-read release/expire locking after cursor flagged a gap — wanted to understand it not just copy
+- checked `.env` wasn't committed
 
 ---
 
-## Prompt Log
+## Prompt Log — Claude
 
-### Prompt 1
+> Full conversation: https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb  
+> Prompts below are from that chat (wording may be slightly cleaned for readability). These are where i built most of the actual code.
+
+### Prompt 1 (Claude)
 
 **Tool:** Claude  
-**Date:** start of project
+**Date:** before Cursor session
 
 **Prompt:**
 
 ```text
-ok so i got this backend intern assignment (jivanex). i need to build an inventory reservation api with fastify postgres kafka docker compose
+ok so i have this jivanex backend intern task. inventory reservation service — fastify, postgres, kafka, docker compose
 
-they gave me like a basic table structure for products and reservations but idk if thats enough?? do i need more tables or is that fine
+they list products and reservations tables but idk if thats enough? do i need more columns or tables
 
-also what even is seed data they want product-1 with 10 quantity do i just put that in a sql file
+also whats seed data they want product-1 with 10 units do i just INSERT that somewhere
 ```
 
 **Useful output summary:**
 
-claude said two tables is fine for this scope. products needs total_quantity, reservations links to product with status and expires_at. seed data = just INSERT in init.sql so reviewers can test fast.
+two tables enough for scope. seed = INSERT in init.sql. suggested `reserved_quantity` on products so you dont count all reservation rows every time.
 
 **What I accepted:**
 
-- products + reservations schema
-- seed row for product-1 with 10 units in init.sql
+- products + reservations schema in init.sql
+- seed row for product-1
+- reserved_quantity counter idea
 
 **What I changed manually:**
 
-- added reserved_quantity column on products cos i needed somewhere to track whats held (claude suggested this when i asked how to check available stock without counting every row)
+- picked status names ACTIVE/RELEASED/EXPIRED myself
+- wired up fastify routes after understanding the schema
 
 **Why:**
 
-i genuinely didnt know what "seed data" meant before this
+literally didnt know what seed data meant before this
 
 ---
 
-### Prompt 2
+### Prompt 2 (Claude)
 
 **Tool:** Claude  
-**Date:** early project
+**Date:** before Cursor session
 
 **Prompt:**
 
 ```text
-the main thing they care about is race conditions?? like if 10 items in stock and 20 people try to reserve at the same time only 10 should work
+big thing they care about is race conditions — 10 stock, 20 people reserve at once, only 10 should work
 
-im using transactions but is that enough or do i need something else. keep seeing FOR UPDATE online and i dont get what it does
+im doing BEGIN/COMMIT transactions but is that enough?? people keep saying FOR UPDATE and i dont really get it
 ```
 
 **Useful output summary:**
 
-explained that two requests can both read "10 available" before either writes. FOR UPDATE locks the row so they go one at a time. do check + update in same transaction.
+transaction alone isnt enough — two requests can both read available stock before either writes. FOR UPDATE locks the product row. check availability + update in same transaction.
 
 **What I accepted:**
 
-- SELECT ... FOR UPDATE on product row when creating reservation
-- BEGIN/COMMIT around the whole thing
+- SELECT ... FOR UPDATE on product when creating reservation
+- total_quantity - reserved_quantity for availability check
 
 **What I changed manually:**
 
-- typed out the fastify route myself, had to look up pg pool syntax
-- picked 409 for not enough stock
+- looked up pg pool syntax and wrote the route
+- used 409 when not enough stock
 
 **Why:**
 
-this was the whole point of the assignment i needed to actually get it
+this was the main thing the assignment is testing
 
 ---
 
-### Prompt 3
+### Prompt 3 (Claude)
 
 **Tool:** Claude  
-**Date:** mid project
+**Date:** before Cursor session
 
 **Prompt:**
 
 ```text
-they want kafka for events reservation.created released expired
+need kafka for reservation.created / released / expired events
 
-never used kafka before lol. do i need consumers or is publishing enough?? and how do i even run kafka locally docker compose is confusing me
+never used kafka before. do i need consumers or just publish?? docker compose for kafka is confusing me
 ```
 
 **Useful output summary:**
 
-for a take home publishing is enough. gave docker-compose kafka service + kafkajs producer snippet. said publish after db commit is ok for now.
+publish-only fine for take-home. docker-compose kafka service + kafkajs producer. publish after commit is ok for now.
 
 **What I accepted:**
 
-- kafka in docker-compose
-- basic producer in kafka.js
-- 3 event topics
+- kafka.js producer
+- docker-compose kafka service
+- publish after COMMIT, log errors dont fail request
 
 **What I changed manually:**
 
-- fought with kafka env vars till it actually started
-- decided not to do consumers cos i was already behind on time
+- spent time getting kafka container to actually start on my machine
+- skipped consumers — felt like too much
 
 **Why:**
 
-kafka was completely new to me
+first time using kafka
 
 ---
 
-### Prompt 4
+### Prompt 4 (Claude)
 
 **Tool:** Claude  
-**Date:** mid project
+**Date:** before Cursor session
 
 **Prompt:**
 
 ```text
-reservations need to expire after 15 min default and stop blocking inventory
+reservations expire after 15 min and should stop blocking inventory
 
-how do people usually do this?? background job?? cron?? im on node fastify
+how do i do expiry in node?? setInterval?? cron??
 ```
 
 **Useful output summary:**
 
-setInterval polling is fine for small project. find ACTIVE reservations where expires_at < now(), mark EXPIRED, give the quantity back.
+setInterval polling works for small project. find ACTIVE where expires_at < now(), mark EXPIRED, decrement reserved_quantity.
 
 **What I accepted:**
 
-- setInterval every 30 sec for expiry job
-- EXPIRED status + decrement reserved_quantity
+- background job every 30s
+- EXPIRED status + free inventory in same transaction
 
 **What I changed manually:**
 
-- wired it into server.js
-- made ttl configurable from env DEFAULT_TTL_MINUTES
+- DEFAULT_TTL_MINUTES from env
+- wired expireOldReservations into server.js
 
 **Why:**
 
-seemed simplest thing that would work
+simplest approach that made sense to me
 
 ---
 
-### Prompt 5
+### Prompt 5 (Claude)
 
 **Tool:** Claude  
-**Date:** mid project
+**Date:** before Cursor session
 
 **Prompt:**
 
 ```text
-assignment wants a test where 20 concurrent requests happen and only 10 succeed
+they want a concurrency test — 20 requests at once, only 10 should succeed
 
-how do i actually fire requests at the same time in node?? promise.all??
+can i just use promise.all with fetch or is that wrong
 ```
 
 **Useful output summary:**
 
-yeah promise.all with fetch works, dont await in a loop or theyll go one by one
+promise.all is fine for a quick local test — fires requests in parallel instead of one by one.
 
 **What I accepted:**
 
-- basic structure for concurrency-test.js
+- basic concurrency-test.js structure
 
 **What I changed manually:**
 
-- added the pass/fail check at the end (10 success, 0 available)
-- ran it like 10 times while fixing bugs
+- added pass/fail output (10 success, 0 available)
+- ran it repeatedly while fixing bugs
 
 **Why:**
 
-needed proof my locking actually works
+needed something to prove locking works
 
 ---
 
-### Prompt 6
+## Prompt Log — Cursor
+
+> These are my **actual prompts** from the Cursor agent session (verbatim). By this point i already had server.js, db.js, kafka.js, init.sql, docker-compose, concurrency-test.js working from the Claude session above.
+
+### Prompt 6 (Cursor)
 
 **Tool:** Cursor  
 **Date:** 2026-07-01
@@ -195,32 +204,34 @@ needed proof my locking actually works
 **Prompt:**
 
 ```text
-can u help with gitignore for node project i almost committed node_modules 💀
+What's left (all lighter lift from here):
 
-also readme is basically empty what am i supposed to put for this kind of assignment
+.gitignore — quick, so you don't accidentally commit node_modules (huge, unnecessary) or .env (has your DB password)
+README.md — setup instructions, API examples, design explanation, the required "what I didn't implement" section
+Push to GitHub — final submission step
 ```
 
 **Useful output summary:**
 
-gitignore for node_modules .env etc. readme with setup steps api examples design section. also deleted a random duplicate docker-compose file i made by accident in powershell
+cursor added .gitignore, .env.example, first readme draft, removed accidental duplicate docker-compose file, first git commit.
 
 **What I accepted:**
 
-- .gitignore .env.example
-- first draft readme
+- .gitignore / .env.example
+- readme structure as starting point
 
 **What I changed manually:**
 
-- read through readme and tweaked wording
-- did first git commit myself
+- reviewed readme wording
+- set up github remote myself later
 
 **Why:**
 
-didnt want to leak db password or upload 500mb of node_modules
+core code was done — this was submission cleanup not "build my whole project"
 
 ---
 
-### Prompt 7
+### Prompt 7 (Cursor)
 
 **Tool:** Cursor  
 **Date:** 2026-07-01
@@ -228,35 +239,33 @@ didnt want to leak db password or upload 500mb of node_modules
 **Prompt:**
 
 ```text
-wait does my project actually do everything they asked for
+jivanex backend intern task
+[full assignment spec pasted — see README in repo for requirements]
 
-[pasted jivanex assignment spec]
-
-like the readme sections and the concurrency thing and kafka and expiry and all that. if something's missing fix it
+this project is supposed to do these. is it doing these? if not let it do these
 ```
 
 **Useful output summary:**
 
-most of it was there already. found a bug — release and expire werent locking product row when updating reserved_quantity. added that. added npm start npm test scripts. auto init sql in docker. fixed readme sections.
+compared code vs spec. most requirements met. found bug: release/expire didnt lock product row when updating reserved_quantity. also added npm start/test, docker auto-init for init.sql, readme sections, ran npm test → pass.
 
 **What I accepted:**
 
-- product lock fix on release/expire (makes sense once explained)
-- npm scripts
-- init.sql mounted in docker-compose
+- product row lock fix on release/expire (after understanding why)
+- npm scripts, docker init mount
 
 **What I changed manually:**
 
-- ran npm test after to make sure still passes
-- tried to understand WHY the lock was needed not just copy paste
+- ran npm test myself to confirm
+- read locking explanation till i could explain it
 
 **Why:**
 
-didnt wanna submit something broken
+wanted to double check before submitting — assignment has a long requirements list
 
 ---
 
-### Prompt 8
+### Prompt 8 (Cursor)
 
 **Tool:** Cursor  
 **Date:** 2026-07-01
@@ -264,21 +273,21 @@ didnt wanna submit something broken
 **Prompt:**
 
 ```text
-push to git heres my github sripriyakota2305
+do it.  https://github.com/sripriyakota2305  this is my github
 ```
 
 **Useful output summary:**
 
-set up remote, committed stuff. push failed cos repo didnt exist yet. i made the repo on github and pushed myself.
+committed changes, set remote. push failed cos repo didnt exist yet.
 
 **What I accepted:**
 
-- remote url setup
+- remote url, commits
 
 **What I changed manually:**
 
-- created repo on github
-- git push -u origin main
+- created empty repo on github
+- git push -u origin main myself
 
 **Why:**
 
@@ -286,7 +295,7 @@ just needed it on github for submission
 
 ---
 
-### Prompt 9
+### Prompt 9 (Cursor)
 
 **Tool:** Cursor  
 **Date:** 2026-07-01
@@ -294,47 +303,76 @@ just needed it on github for submission
 **Prompt:**
 
 ```text
-they also want ai-prompts folder with prompts and transcripts documenting ai usage. i used claude and cursor only. can u set it up
+i added, https://github.com/sripriyakota2305/inventory-reservation-service , check
 ```
 
 **Useful output summary:**
 
-made ai-prompts folder structure. im filling in the actual prompts myself.
+verified local main matches remote. repo live.
 
 **What I accepted:**
 
-- folder layout from submission guide
+- confirmation everything synced
 
 **What I changed manually:**
 
-- writing prompts in my own words (this file)
-- claude link: https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb
+- n/a — just wanted to make sure push worked
 
 **Why:**
 
-required for submission
+wanted to confirm before submitting the link
 
 ---
 
-## stuff i didnt do / ignored from ai
+### Prompt 10 (Cursor)
 
-| thing | why |
+**Tool:** Cursor  
+**Date:** 2026-07-01
+
+**Prompt:**
+
+```text
+AI Tool Usage Submission Guide
+[full submission guide pasted]
+
+im supposed to be doing this too. I only used cursor and claude.
+```
+
+**Useful output summary:**
+
+created ai-prompts/ folder with prompts.md and transcript files.
+
+**What I accepted:**
+
+- folder structure from guide
+
+**What I changed manually:**
+
+- writing/editing prompt content myself (this file)
+- linking claude shared chat
+
+**Why:**
+
+required deliverable for the assignment
+
+---
+
+## What I rejected or didn't use
+
+| suggestion | my call |
 |---|---|
-| kafka consumers | too much, publishing was enough |
-| transactional outbox | sounded complicated didnt have time |
-| in memory mutex | assignment said postgres |
-| full jest test suite | just used my concurrency script |
-| auth on api | not asked for |
+| kafka consumers | not needed for assignment scope |
+| transactional outbox | noted as limitation, didnt implement |
+| in-memory locking | assignment says postgres |
+| full jest/ci suite | used concurrency-test.js instead |
+| auth middleware | not required |
 
-## me vs ai (roughly)
+## Honest split of work
 
-| thing | me | ai helped |
+| part | mostly me + claude | mostly cursor |
 |---|---|---|
-| figuring out tables + seed | asked a lot of dumb questions | claude explained schema |
-| locking / race conditions | implemented after understanding | claude explained FOR UPDATE |
-| kafka + docker | got it running after trial and error | claude gave starting config |
-| expiry job | wired it up | claude said setInterval is ok |
-| concurrency test | wrote pass/fail checks | claude said use promise.all |
-| release lock bug | didnt catch at first | cursor found it when reviewing |
-| readme gitignore git | reviewed everything | cursor drafted |
-| github push | did the actual push | cursor set remote |
+| server.js, schema, kafka, expiry, concurrency test | ✅ built with claude help | reviewed in spec check |
+| release/expire product lock fix | understood + kept fix | found the bug |
+| readme, gitignore, npm scripts | reviewed | drafted / added |
+| github push | did push myself | helped with remote/commits |
+| ai-prompts folder | writing content | set up structure |

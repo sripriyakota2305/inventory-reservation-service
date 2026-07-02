@@ -1,52 +1,67 @@
-# Cursor Chat Summary
+# Cursor Chat — Actual Prompts
 
 **Project:** inventory-reservation-service  
-**Date:** 2026-07-01
+**Date:** 2026-07-01  
+**Raw transcript:** `cursor-session.jsonl` (user messages verbatim, sensitive data redacted)
+
+> Note: when i opened Cursor, the core service was already built (server.js, kafka, init.sql, concurrency test etc) from my Claude session. Cursor was mostly for submission polish + spec check.
 
 ---
 
-## me
+## Prompt 1 — submission cleanup
 
-can u help with gitignore for node project i almost committed node_modules 💀
+```text
+What's left (all lighter lift from here):
 
-also readme is basically empty what am i supposed to put for this kind of assignment
+.gitignore — quick, so you don't accidentally commit node_modules (huge, unnecessary) or .env (has your DB password)
+README.md — setup instructions, API examples, design explanation, the required "what I didn't implement" section
+Push to GitHub — final submission step
+```
 
-## cursor
-
-made .gitignore, .env.example, draft readme with setup + api examples + design. deleted duplicate docker-compose file i accidentally made
-
----
-
-## me
-
-wait does my project actually do everything they asked for
-
-[pasted jivanex assignment]
-
-like readme sections concurrency kafka expiry all that. if somethings missing fix it
-
-## cursor
-
-mostly fine. found issue — release/expire update reserved_quantity without locking product row. fixed that. added npm start/test, docker auto init for sql, readme sections.
-
-ran npm test after — 10 success 10 fail 0 stock ✅
+**What happened:** .gitignore, .env.example, readme draft, first commit. removed duplicate docker-compose file i made by accident.
 
 ---
 
-## me
+## Prompt 2 — spec check
 
-push to git heres my github sripriyakota2305
+```text
+jivanex backend intern task
+[full assignment spec pasted]
 
-## cursor
+this project is supposed to do these. is it doing these? if not let it do these
+```
 
-set remote, committed. push failed repo didnt exist. i made repo on github and pushed manually
+**What happened:** most requirements already met. found release/expire missing product row lock — fixed. npm start/test scripts, docker auto-init, readme sections updated. npm test passed 10/10/0.
 
 ---
 
-## me
+## Prompt 3 — github
 
-they want ai-prompts folder for documenting ai usage. used claude and cursor. can u set it up
+```text
+do it.  https://github.com/sripriyakota2305  this is my github
+```
 
-## cursor
+**What happened:** remote + commits set up. push failed (repo didnt exist). i created repo on github and pushed manually.
 
-made the folder structure. im writing the actual prompts myself
+---
+
+## Prompt 4 — verify push
+
+```text
+i added, https://github.com/sripriyakota2305/inventory-reservation-service , check
+```
+
+**What happened:** confirmed local main matches github.
+
+---
+
+## Prompt 5 — ai-prompts folder
+
+```text
+AI Tool Usage Submission Guide
+[full guide pasted]
+
+im supposed to be doing this too. I only used cursor and claude.
+```
+
+**What happened:** ai-prompts/ folder created. im filling in the actual prompt details myself.

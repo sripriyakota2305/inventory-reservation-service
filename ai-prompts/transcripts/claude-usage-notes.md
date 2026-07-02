@@ -1,63 +1,83 @@
-# Claude Chat Summary
+# Claude Chat
 
-**Link:** https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb
+**Shared conversation (full transcript):** https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb
 
-couldn't export transcript locally so this is a summary. the shared link above has the actual conversation.
+This is where i built most of the project — before i switched to Cursor for readme/git/submission stuff.
 
----
-
-## 1 — tables and seed data
-
-**me:** got jivanex assignment, need fastify postgres kafka. they gave products/reservations tables but idk if thats enough. also what is seed data do i just insert in sql
-
-**claude:** two tables fine. seed = INSERT product-1 with 10 qty in init.sql. suggested reserved_quantity column on products
-
-**me after:** wrote init.sql, added seed row, started on server.js
+Prompts below match what i asked in that chat (see link for exact wording). Wording here is close but not word-for-word — check the shared link if you want the real messages.
 
 ---
 
-## 2 — race conditions / FOR UPDATE
+## topics i asked claude about (in order)
 
-**me:** they care about race conditions, 20 people 10 stock only 10 should work. im using transactions is that enough?? whats FOR UPDATE
+### 1 — tables + seed data
 
-**claude:** transaction alone not enough, both can read same stock. FOR UPDATE locks the row. do everything in one transaction
+```text
+ok so i have this jivanex backend intern task. inventory reservation service — fastify, postgres, kafka, docker compose
 
-**me after:** added FOR UPDATE on create reservation. still confused but it made sense after reading postgres docs
+they list products and reservations tables but idk if thats enough? do i need more columns or tables
 
----
+also whats seed data they want product-1 with 10 units do i just INSERT that somewhere
+```
 
-## 3 — kafka
-
-**me:** need kafka events created/released/expired. never used kafka. consumers needed?? docker compose confusing
-
-**claude:** publish only is ok for assignment. docker kafka config + kafkajs producer. publish after commit
-
-**me after:** kafka.js + docker-compose, fought with it till it ran on windows
+→ got init.sql schema + seed INSERT + reserved_quantity idea
 
 ---
 
-## 4 — ttl expiry
+### 2 — race conditions / FOR UPDATE
 
-**me:** reservations expire after 15 min and should free inventory. how do i do this in node
+```text
+big thing they care about is race conditions — 10 stock, 20 people reserve at once, only 10 should work
 
-**claude:** setInterval job, find expired ACTIVE ones, mark EXPIRED, decrement counter
+im doing BEGIN/COMMIT transactions but is that enough?? people keep saying FOR UPDATE and i dont really get it
+```
 
-**me after:** added expireOldReservations in server.js every 30 sec
-
----
-
-## 5 — concurrency test
-
-**me:** need 20 concurrent requests only 10 succeed. promise.all??
-
-**claude:** yeah that works for quick test
-
-**me after:** concurrency-test.js, ran it a bunch while debugging
+→ understood why transaction alone isnt enough. added FOR UPDATE on create.
 
 ---
 
-## what i didnt do
+### 3 — kafka
 
-- didnt paste whole assignment and say build everything
-- asked when stuck on specific things (tables, kafka, locking, testing)
-- release/expire lock bug i found later with cursor not claude
+```text
+need kafka for reservation.created / released / expired events
+
+never used kafka before. do i need consumers or just publish?? docker compose for kafka is confusing me
+```
+
+→ kafka.js + docker-compose kafka. publish after commit.
+
+---
+
+### 4 — ttl expiry
+
+```text
+reservations expire after 15 min and should stop blocking inventory
+
+how do i do expiry in node?? setInterval?? cron??
+```
+
+→ setInterval background job in server.js
+
+---
+
+### 5 — concurrency test
+
+```text
+they want a concurrency test — 20 requests at once, only 10 should succeed
+
+can i just use promise.all with fetch or is that wrong
+```
+
+→ concurrency-test.js
+
+---
+
+## what i did after claude
+
+- got docker running on windows (took trial and error)
+- ran concurrency test a bunch while fixing stuff
+- moved to cursor for gitignore/readme/spec check (see cursor-chat.md)
+
+## what claude didnt catch
+
+release/expire product row locking — cursor found that later when i pasted the full spec and asked if i missed anything
