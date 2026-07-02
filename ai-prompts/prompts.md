@@ -1,5 +1,38 @@
 # AI Usage Log
 
+## Redactions & sensitive data
+
+Per the submission guide: **no API keys, access tokens, passwords, private company code, or personal data.**
+
+I reviewed all files in `ai-prompts/` before submitting. Here's what was redacted or kept out:
+
+| Item | Status |
+|---|---|
+| `.env` file contents / real `DATABASE_URL` | **Not included** — `.env` is gitignored; repo only has `.env.example` with local docker defaults (`postgres`/`postgres` on localhost) |
+| Database passwords or connection strings from my machine | **Redacted** — never pasted into prompts or transcripts |
+| Git author email | **Redacted** from raw agent logs |
+| GitHub CLI device login codes | **Redacted** from earlier agent session (failed `gh auth login` attempt) |
+| Full assignment spec + submission guide text | **Omitted in `cursor-session.jsonl`** for length — summarized as `[pasted]`; requirements are in repo `README.md` |
+| API keys / tokens | **None used** in this project |
+
+**Included on purpose (not sensitive):** public GitHub username/repo URL (submission requirement), Claude [shared chat link](https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb) (exported for this deliverable).
+
+My prompt mentioning `.env (has your DB password)` describes *why* I wanted a `.gitignore` — it does **not** include the actual password.
+
+---
+
+## What this log is meant to show
+
+Reviewers said they're evaluating (not punishing AI use):
+
+- **Did I understand the suggestions?** — e.g. why `FOR UPDATE` matters, why release needed a product-row lock too
+- **Did I make my own decisions?** — `reserved_quantity` counter, setInterval expiry, kafka publish-only (no consumers), idempotent release as no-op
+- **Did I verify concurrency?** — `npm test` → 10 succeeded, 10 failed, 0 available; manual `curl` checks
+- **Can I explain tradeoffs?** — see repo `README.md` ("What I deliberately did not implement", kafka publish-after-commit vs outbox, etc.)
+- **Is the final code reliable?** — spec check + concurrency test + locking fix before submit
+
+---
+
 ## Tools Used
 
 - **Claude:** yes — [shared chat](https://claude.ai/share/8e1f7fc7-0cab-4afc-900b-06521c1b7abb) (web). used while building the core service — schema, locking, kafka, expiry, concurrency test

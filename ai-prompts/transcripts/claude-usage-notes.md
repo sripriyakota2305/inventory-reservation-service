@@ -6,6 +6,13 @@ This is where i built most of the project — before i switched to Cursor for re
 
 Prompts below match what i asked in that chat (see link for exact wording). Wording here is close but not word-for-word — check the shared link if you want the real messages.
 
+### Redactions & privacy
+
+- I did **not** paste real `.env` / `DATABASE_URL` / passwords into Claude prompts
+- Repo uses `.env.example` only (local docker defaults) — real `.env` is gitignored
+- If the shared Claude link contains any local paths or docker debug output, those are dev-machine details only — no production secrets (this is a local take-home stack)
+- No API keys or tokens — kafka/postgres run locally via docker compose
+
 ---
 
 ## topics i asked claude about (in order)

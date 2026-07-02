@@ -2,7 +2,15 @@
 
 **Project:** inventory-reservation-service  
 **Date:** 2026-07-01  
-**Raw transcript:** `cursor-session.jsonl` (user messages verbatim, sensitive data redacted)
+**Raw transcript:** `cursor-session.jsonl` (user messages only)
+
+### Redactions applied
+
+- **No `.env` values** — only a reference in my prompt that `.env` contains a DB password (the password itself is not here)
+- **No git email / personal data**
+- **No GitHub CLI device codes** (from a failed auth attempt in the full agent log)
+- **Long pasted docs omitted in jsonl** — assignment spec + AI submission guide replaced with `[omitted for length]`; not sensitive, just verbose
+- **Assistant/tool output stripped** from jsonl — only my prompts kept
 
 > Note: when i opened Cursor, the core service was already built (server.js, kafka, init.sql, concurrency test etc) from my Claude session. Cursor was mostly for submission polish + spec check.
 
